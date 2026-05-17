@@ -3,7 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { getLeadsApi, createLeadApi, updateLeadApi, deleteLeadApi, exportCSVApi } from '../api/leads.api';
 import type { Lead } from '../types';
 
-const STATUS_OPTIONS = ['New', 'Contacted', 'Qualified', 'Lost'];
+type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Lost';
+
+const STATUS_OPTIONS: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Lost'];
 const SOURCE_OPTIONS = ['Website', 'Instagram', 'Referral'];
 
 const statusColors: Record<string, string> = {
@@ -35,7 +37,9 @@ export default function Dashboard() {
   const [total, setTotal] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', status: 'New', source: 'Website' });
+  const [form, setForm] = useState<{ name: string; email: string; status: LeadStatus; source: string }>({
+    name: '', email: '', status: 'New', source: 'Website',
+  });
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -79,7 +83,7 @@ export default function Dashboard() {
 
   const openEdit = (lead: Lead) => {
     setEditLead(lead);
-    setForm({ name: lead.name, email: lead.email, status: lead.status, source: lead.source });
+    setForm({ name: lead.name, email: lead.email, status: lead.status as LeadStatus, source: lead.source });
     setFormError('');
     setShowModal(true);
   };
@@ -340,7 +344,8 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">Status</label>
-                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+                  <select value={form.status}
+                    onChange={e => setForm({ ...form, status: e.target.value as LeadStatus })}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300">
                     {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
