@@ -25,7 +25,12 @@ export const createLeadApi = async (data: {
 
 export const updateLeadApi = async (
   id: string,
-  data: Partial<Lead>
+  data: {
+    name?: string;
+    email?: string;
+    status?: string;
+    source?: string;
+  }
 ): Promise<{ success: boolean; lead: Lead }> => {
   const res = await api.put(`/leads/${id}`, data);
   return res.data;
