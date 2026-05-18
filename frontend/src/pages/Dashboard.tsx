@@ -20,6 +20,13 @@ import LeadDetailModal from '../components/LeadDetailModal';
 
 const EMPTY_FORM: LeadFormData = { name: '', email: '', status: 'New', source: 'Website' };
 
+const getGreeting = (): string => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
@@ -151,7 +158,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-4">
             <button onClick={() => setSidebarOpen(o => !o)} className="text-gray-400 hover:text-rose-500 transition text-xl">☰</button>
             <div>
-              <h2 className="text-lg font-bold text-gray-800 dark:text-white">Good morning, {user?.name?.split(' ')[0]}! 👋</h2>
+              <h2 className="text-lg font-bold text-gray-800 dark:text-white">{getGreeting()}, {user?.name?.split(' ')[0]}! 👋</h2>
               <p className="text-xs text-gray-400 dark:text-gray-500">Here's what's happening with your leads today.</p>
             </div>
           </div>
