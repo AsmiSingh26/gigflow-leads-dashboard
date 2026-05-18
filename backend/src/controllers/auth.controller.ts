@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.model';
-
+import { AuthRequest } from '../types';
 const generateToken = (id: string, role: string): string => {
   return jwt.sign(
     { id, role },
@@ -78,7 +78,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await User.findById((req as any).user.id).select('-password');
+    const user = await User.findById((req as AuthRequest).user?.id).select('-password');
     res.status(200).json({ success: true, user });
   } catch (error) {
   console.error('Error:', error);

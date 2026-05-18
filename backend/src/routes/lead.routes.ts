@@ -1,14 +1,12 @@
 import { Router } from 'express';
-import {
-  createLead, getLeads, getLead,
-  updateLead, deleteLead, exportCSV
-} from '../controllers/lead.controller';
+import { createLead, getLeads, getLead, updateLead, deleteLead, exportCSV, getStats } from '../controllers/lead.controller';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.use(protect);
 
+router.get('/stats', getStats);
 router.get('/export', exportCSV);
 router.get('/', getLeads);
 router.post('/', createLead);

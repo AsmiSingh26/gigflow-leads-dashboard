@@ -101,7 +101,17 @@ export const deleteLead = async (req: AuthRequest, res: Response): Promise<void>
 
 export const exportCSV = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const leads = await Lead.find({});
+    const { status, source, search } = req.query;
+    const filter: Record<string, unknown> = {};
+    if (status) filter.status = status;
+    if (source) filter.source = source;
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+    const leads = await Lead.find(filter).sort({ createdAt: -1 });
     const csv = [
       'Name,Email,Status,Source,Created At',
       ...leads.map(l => `${l.name},${l.email},${l.status},${l.source},${l.createdAt}`)
@@ -110,6 +120,22 @@ export const exportCSV = async (req: AuthRequest, res: Response): Promise<void> 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=leads.csv');
     res.status(200).send(csv);
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: String(error) });
+  }
+};
+export const getStats = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [total, newCount, qualifiedCount, lostCount] = await Promise.all([
+      Lead.countDocuments({}),
+      Lead.countDocuments({ status: 'New' }),
+      Lead.countDocuments({ status: 'Qualified' }),
+      Lead.countDocuments({ status: 'Lost' }),
+    ]);
+    res.status(200).json({
+      success: true,
+      stats: { total, new: newCount, qualified: qualifiedCount, lost: lostCount },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: String(error) });
   }
