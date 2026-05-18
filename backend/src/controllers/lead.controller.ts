@@ -101,7 +101,17 @@ export const deleteLead = async (req: AuthRequest, res: Response): Promise<void>
 
 export const exportCSV = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const leads = await Lead.find({});
+    const { status, source, search } = req.query;
+    const filter: Record<string, unknown> = {};
+    if (status) filter.status = status;
+    if (source) filter.source = source;
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+    const leads = await Lead.find(filter).sort({ createdAt: -1 });
     const csv = [
       'Name,Email,Status,Source,Created At',
       ...leads.map(l => `${l.name},${l.email},${l.status},${l.source},${l.createdAt}`)
