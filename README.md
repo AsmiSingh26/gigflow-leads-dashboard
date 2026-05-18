@@ -37,48 +37,65 @@ A full-stack Lead Management Dashboard built with the MERN stack, TypeScript, an
 
 ```
 gigflow-leads-dashboard/
+├── API.md
+├── README.md
+├── docker-compose.yml
+├── .gitignore
+│
 ├── frontend/
 │   ├── src/
-│   │   ├── api/              # Axios instances & API functions
+│   │   ├── api/                  # Axios instances & API functions
 │   │   │   ├── axios.ts
 │   │   │   ├── auth.api.ts
 │   │   │   └── leads.api.ts
-│   │   ├── components/       # Reusable components
-│   │   │   └── ProtectedRoute.tsx
-│   │   ├── context/          # React context
-│   │   │   └── AuthContext.tsx
-│   │   ├── pages/            # Page components
+│   │   ├── components/           # Reusable UI components
+│   │   │   ├── DeleteModal.tsx
+│   │   │   ├── LeadDetailModal.tsx
+│   │   │   ├── LeadFilters.tsx
+│   │   │   ├── LeadModal.tsx
+│   │   │   ├── LeadTable.tsx
+│   │   │   ├── Pagination.tsx
+│   │   │   ├── ProtectedRoute.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   └── StatCard.tsx
+│   │   ├── context/              # React context providers
+│   │   │   ├── AuthContext.tsx
+│   │   │   └── ThemeContext.tsx
+│   │   ├── pages/                # Page components
 │   │   │   ├── Dashboard.tsx
 │   │   │   ├── Login.tsx
 │   │   │   └── Register.tsx
-│   │   ├── types/            # TypeScript interfaces
+│   │   ├── types/                # TypeScript interfaces
 │   │   │   └── index.ts
+│   │   ├── App.tsx
 │   │   └── main.tsx
+│   ├── public/
+│   ├── .env.example
 │   ├── vercel.json
+│   ├── tailwind.config.js
 │   └── package.json
 │
 ├── backend/
 │   ├── src/
-│   │   ├── config/           # Database connection
+│   │   ├── config/               # Database connection
 │   │   │   └── database.ts
-│   │   ├── controllers/      # Route handlers
+│   │   ├── controllers/          # Route handlers
 │   │   │   ├── auth.controller.ts
 │   │   │   └── lead.controller.ts
-│   │   ├── middleware/       # Auth & role middleware
+│   │   ├── middleware/           # Auth & role middleware
 │   │   │   └── auth.middleware.ts
-│   │   ├── models/           # Mongoose models
+│   │   ├── models/               # Mongoose models
 │   │   │   ├── Lead.model.ts
 │   │   │   └── User.model.ts
-│   │   ├── routes/           # Express routers
+│   │   ├── routes/               # Express routers
 │   │   │   ├── auth.routes.ts
 │   │   │   └── lead.routes.ts
-│   │   ├── types/            # TypeScript types
+│   │   ├── types/                # TypeScript types
 │   │   │   └── index.ts
 │   │   └── server.ts
 │   ├── .env.example
+│   ├── Dockerfile
 │   └── package.json
-│
-└── docker-compose.yml
 ```
 
 ---
