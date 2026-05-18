@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   getLeadsApi, getStatsApi, createLeadApi, updateLeadApi,
   deleteLeadApi, exportCSVApi,
@@ -21,6 +22,7 @@ const EMPTY_FORM: LeadFormData = { name: '', email: '', status: 'New', source: '
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stats, setStats] = useState<LeadStats>({ total: 0, new: 0, qualified: 0, lost: 0 });
@@ -154,6 +156,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-rose-100 dark:border-gray-700 text-gray-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-gray-800 transition text-base"
+            >
+              {isDark ? '☀️' : '🌙'}
+            </button>
             <button
               onClick={() => exportCSVApi({ status: statusFilter, source: sourceFilter, search: debouncedSearch })}
               className="flex items-center gap-2 border border-rose-200 dark:border-rose-800 text-rose-500 dark:text-rose-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-rose-50 dark:hover:bg-rose-900/20 transition"
