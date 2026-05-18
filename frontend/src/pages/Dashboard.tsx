@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getLeadsApi, createLeadApi, updateLeadApi, deleteLeadApi, exportCSVApi } from '../api/leads.api';
+import {
+  getLeadsApi, getStatsApi, createLeadApi, updateLeadApi,
+  deleteLeadApi, exportCSVApi,
+} from '../api/leads.api';
+import type { LeadStats } from '../api/leads.api';
 import type { Lead } from '../types';
 
 import Sidebar from '../components/Sidebar';
@@ -11,6 +15,7 @@ import Pagination from '../components/Pagination';
 import LeadModal from '../components/LeadModal';
 import type { LeadFormData } from '../components/LeadModal';
 import DeleteModal from '../components/DeleteModal';
+import LeadDetailModal from '../components/LeadDetailModal';
 
 const EMPTY_FORM: LeadFormData = { name: '', email: '', status: 'New', source: 'Website' };
 
@@ -18,9 +23,9 @@ export default function Dashboard() {
   const { user, logout } = useAuth();
 
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [stats, setStats] = useState<LeadStats>({ total: 0, new: 0, qualified: 0, lost: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
   const [search, setSearch] = useState('');
@@ -37,6 +42,7 @@ export default function Dashboard() {
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewLead, setViewLead] = useState<Lead | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 500);
@@ -45,14 +51,26 @@ export default function Dashboard() {
 
   useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, sourceFilter, sort]);
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const s = await getStatsApi();
+      setStats(s);
+    } catch { /* non-critical */ }
+  }, []);
+
   const fetchLeads = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const res = await getLeadsApi({ page, limit: 10, search: debouncedSearch, status: statusFilter, source: sourceFilter, sort });
+      const res = await getLeadsApi({
+        page, limit: 10,
+        search: debouncedSearch,
+        status: statusFilter,
+        source: sourceFilter,
+        sort,
+      });
       setLeads(res.leads);
       setTotalPages(res.pagination.totalPages);
-      setTotal(res.pagination.total);
     } catch {
       setError('Failed to fetch leads');
     } finally {
@@ -61,8 +79,15 @@ export default function Dashboard() {
   }, [page, debouncedSearch, statusFilter, sourceFilter, sort]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
-  const openCreate = () => { setEditLead(null); setForm(EMPTY_FORM); setFormError(''); setShowModal(true); };
+  const openCreate = () => {
+    setEditLead(null);
+    setForm(EMPTY_FORM);
+    setFormError('');
+    setShowModal(true);
+  };
+
   const openEdit = (lead: Lead) => {
     setEditLead(lead);
     setForm({ name: lead.name, email: lead.email, status: lead.status as LeadFormData['status'], source: lead.source });
@@ -73,28 +98,46 @@ export default function Dashboard() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    if (!form.name || !form.email) { setFormError('Name and email are required'); return; }
+    if (!form.name.trim() || !form.email.trim()) {
+      setFormError('Name and email are required');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      setFormError('Please enter a valid email address');
+      return;
+    }
     try {
       setFormLoading(true);
       if (editLead) await updateLeadApi(editLead._id, form);
       else await createLeadApi(form);
       setShowModal(false);
       fetchLeads();
-    } catch { setFormError('Something went wrong'); }
-    finally { setFormLoading(false); }
+      fetchStats();
+    } catch {
+      setFormError('Something went wrong. Please try again.');
+    } finally {
+      setFormLoading(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    try { await deleteLeadApi(deleteId); setDeleteId(null); fetchLeads(); }
-    catch { setError('Failed to delete lead'); }
+    try {
+      await deleteLeadApi(deleteId);
+      setDeleteId(null);
+      fetchLeads();
+      fetchStats();
+    } catch {
+      setError('Failed to delete lead');
+    }
   };
 
   const statCards = [
-    { label: 'Total Leads', value: total, color: 'from-rose-400 to-rose-600', icon: '👥' },
-    { label: 'New', value: leads.filter(l => l.status === 'New').length, color: 'from-blue-400 to-blue-600', icon: '✨' },
-    { label: 'Qualified', value: leads.filter(l => l.status === 'Qualified').length, color: 'from-green-400 to-green-600', icon: '✅' },
-    { label: 'Lost', value: leads.filter(l => l.status === 'Lost').length, color: 'from-gray-400 to-gray-600', icon: '❌' },
+    { label: 'Total Leads', value: stats.total,    color: 'from-rose-400 to-rose-600',   icon: '👥' },
+    { label: 'New',         value: stats.new,       color: 'from-blue-400 to-blue-600',   icon: '✨' },
+    { label: 'Qualified',   value: stats.qualified, color: 'from-green-400 to-green-600', icon: '✅' },
+    { label: 'Lost',        value: stats.lost,      color: 'from-gray-400 to-gray-600',   icon: '❌' },
   ];
 
   return (
@@ -111,10 +154,16 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => exportCSVApi()} className="flex items-center gap-2 border border-rose-200 dark:border-rose-800 text-rose-500 dark:text-rose-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-rose-50 dark:hover:bg-rose-900/20 transition">
+            <button
+              onClick={() => exportCSVApi({ status: statusFilter, source: sourceFilter, search: debouncedSearch })}
+              className="flex items-center gap-2 border border-rose-200 dark:border-rose-800 text-rose-500 dark:text-rose-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-rose-50 dark:hover:bg-rose-900/20 transition"
+            >
               📥 Export CSV
             </button>
-            <button onClick={openCreate} className="flex items-center gap-2 bg-gradient-to-r from-rose-400 to-rose-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90 transition shadow-md shadow-rose-200">
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 bg-gradient-to-r from-rose-400 to-rose-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90 transition shadow-md shadow-rose-200"
+            >
               + Add Lead
             </button>
           </div>
@@ -135,7 +184,7 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-rose-50 dark:border-gray-700 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <h3 className="font-semibold text-gray-800 dark:text-white">All Leads</h3>
-              <span className="text-sm text-gray-400 dark:text-gray-500">{total} total</span>
+              <span className="text-sm text-gray-400 dark:text-gray-500">{stats.total} total</span>
             </div>
 
             {loading ? (
@@ -143,7 +192,7 @@ export default function Dashboard() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
               </div>
             ) : (
-              <LeadTable leads={leads} isAdmin={user?.role === 'admin'} onEdit={openEdit} onDelete={setDeleteId} />
+              <LeadTable leads={leads} isAdmin={user?.role === 'admin'} onEdit={openEdit} onDelete={setDeleteId} onView={setViewLead} />
             )}
 
             <Pagination page={page} totalPages={totalPages} onPrev={() => setPage(p => Math.max(1, p - 1))} onNext={() => setPage(p => Math.min(totalPages, p + 1))} />
@@ -153,6 +202,7 @@ export default function Dashboard() {
 
       {showModal && <LeadModal editLead={editLead} form={form} formError={formError} formLoading={formLoading} onFormChange={setForm} onSubmit={handleSubmit} onClose={() => setShowModal(false)} />}
       {deleteId && <DeleteModal onConfirm={handleDelete} onCancel={() => setDeleteId(null)} />}
+      {viewLead && <LeadDetailModal lead={viewLead} onClose={() => setViewLead(null)} onEdit={() => { setViewLead(null); openEdit(viewLead); }} />}
     </div>
   );
 }
