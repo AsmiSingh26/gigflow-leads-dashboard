@@ -114,3 +114,19 @@ export const exportCSV = async (req: AuthRequest, res: Response): Promise<void> 
     res.status(500).json({ success: false, message: 'Server error', error: String(error) });
   }
 };
+export const getStats = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [total, newCount, qualifiedCount, lostCount] = await Promise.all([
+      Lead.countDocuments({}),
+      Lead.countDocuments({ status: 'New' }),
+      Lead.countDocuments({ status: 'Qualified' }),
+      Lead.countDocuments({ status: 'Lost' }),
+    ]);
+    res.status(200).json({
+      success: true,
+      stats: { total, new: newCount, qualified: qualifiedCount, lost: lostCount },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: String(error) });
+  }
+};
