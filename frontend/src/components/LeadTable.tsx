@@ -19,9 +19,10 @@ interface LeadTableProps {
   isAdmin: boolean;
   onEdit: (lead: Lead) => void;
   onDelete: (id: string) => void;
+  onView: (lead: Lead) => void;  // added
 }
 
-export default function LeadTable({ leads, isAdmin, onEdit, onDelete }: LeadTableProps) {
+export default function LeadTable({ leads, isAdmin, onEdit, onDelete, onView }: LeadTableProps) {  // added onView
   if (leads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -68,6 +69,7 @@ export default function LeadTable({ leads, isAdmin, onEdit, onDelete }: LeadTabl
             </td>
             <td className="px-6 py-4">
               <div className="flex gap-3">
+                <button onClick={() => onView(lead)} className="text-gray-400 hover:text-rose-500 text-sm font-medium transition">View</button>  {/* added */}
                 <button onClick={() => onEdit(lead)} className="text-rose-400 hover:text-rose-600 text-sm font-medium transition">Edit</button>
                 {isAdmin && (
                   <button onClick={() => onDelete(lead._id)} className="text-gray-300 dark:text-gray-600 hover:text-red-400 text-sm font-medium transition">Delete</button>
