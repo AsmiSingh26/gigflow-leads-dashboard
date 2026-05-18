@@ -1,16 +1,37 @@
 import { Response } from 'express';
 import Lead from '../models/Lead.model';
-import { AuthRequest } from '../types';
+import { AuthRequest, LeadStatus, LeadSource } from '../types';
+
+const VALID_STATUSES: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Lost'];
+const VALID_SOURCES: LeadSource[] = ['Website', 'Instagram', 'Referral'];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const createLead = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, email, status, source } = req.body;
+
     if (!name || !email || !source) {
       res.status(400).json({ success: false, message: 'Name, email and source are required' });
       return;
     }
+    if (!EMAIL_REGEX.test(email)) {
+      res.status(400).json({ success: false, message: 'Invalid email format' });
+      return;
+    }
+    if (!VALID_SOURCES.includes(source)) {
+      res.status(400).json({ success: false, message: `Source must be one of: ${VALID_SOURCES.join(', ')}` });
+      return;
+    }
+    if (status && !VALID_STATUSES.includes(status)) {
+      res.status(400).json({ success: false, message: `Status must be one of: ${VALID_STATUSES.join(', ')}` });
+      return;
+    }
+
     const lead = await Lead.create({
-      name, email, status: status || 'New', source,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      status: status || 'New',
+      source,
       createdBy: req.user?.id,
     });
     res.status(201).json({ success: true, lead });
@@ -34,8 +55,8 @@ export const getLeads = async (req: AuthRequest, res: Response): Promise<void> =
     }
 
     const sortOrder = sort === 'oldest' ? 1 : -1;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
     const skip = (pageNum - 1) * limitNum;
 
     const [leads, total] = await Promise.all([
@@ -73,7 +94,28 @@ export const getLead = async (req: AuthRequest, res: Response): Promise<void> =>
 
 export const updateLead = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const lead = await Lead.findByIdAndUpdate(req.params.id, req.body, {
+    const { name, email, status, source } = req.body;
+
+    if (email && !EMAIL_REGEX.test(email)) {
+      res.status(400).json({ success: false, message: 'Invalid email format' });
+      return;
+    }
+    if (status && !VALID_STATUSES.includes(status)) {
+      res.status(400).json({ success: false, message: `Status must be one of: ${VALID_STATUSES.join(', ')}` });
+      return;
+    }
+    if (source && !VALID_SOURCES.includes(source)) {
+      res.status(400).json({ success: false, message: `Source must be one of: ${VALID_SOURCES.join(', ')}` });
+      return;
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (name) updateData.name = name.trim();
+    if (email) updateData.email = email.trim().toLowerCase();
+    if (status) updateData.status = status;
+    if (source) updateData.source = source;
+
+    const lead = await Lead.findByIdAndUpdate(req.params.id, updateData, {
       new: true, runValidators: true,
     });
     if (!lead) {
@@ -124,6 +166,7 @@ export const exportCSV = async (req: AuthRequest, res: Response): Promise<void> 
     res.status(500).json({ success: false, message: 'Server error', error: String(error) });
   }
 };
+
 export const getStats = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const [total, newCount, qualifiedCount, lostCount] = await Promise.all([

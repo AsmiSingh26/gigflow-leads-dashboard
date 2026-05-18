@@ -2,6 +2,10 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.model';
 import { AuthRequest } from '../types';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VALID_ROLES = ['admin', 'sales'];
+
 const generateToken = (id: string, role: string): string => {
   return jwt.sign(
     { id, role },
@@ -9,6 +13,7 @@ const generateToken = (id: string, role: string): string => {
     { expiresIn: '7d' }
   );
 };
+
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password, role } = req.body;
@@ -17,30 +22,37 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ success: false, message: 'All fields required' });
       return;
     }
+    if (!EMAIL_REGEX.test(email)) {
+      res.status(400).json({ success: false, message: 'Invalid email format' });
+      return;
+    }
+    if (password.length < 6) {
+      res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+      return;
+    }
+    if (role && !VALID_ROLES.includes(role)) {
+      res.status(400).json({ success: false, message: 'Role must be admin or sales' });
+      return;
+    }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       res.status(400).json({ success: false, message: 'Email already exists' });
       return;
     }
 
-    const user = await User.create({ name, email, password, role });
+    const user = await User.create({ name: name.trim(), email: email.toLowerCase(), password, role });
     const token = generateToken(user._id.toString(), user.role);
 
     res.status(201).json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
   } catch (error) {
-  console.error('Error:', error);
-  res.status(500).json({ success: false, message: 'Server error', error: String(error) });
-}
+    console.error('Error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: String(error) });
+  }
 };
 
 export const login = async (req: Request, res: Response): Promise<void> => {
@@ -51,8 +63,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ success: false, message: 'All fields required' });
       return;
     }
+    if (!EMAIL_REGEX.test(email)) {
+      res.status(400).json({ success: false, message: 'Invalid email format' });
+      return;
+    }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user || !(await user.comparePassword(password))) {
       res.status(401).json({ success: false, message: 'Invalid credentials' });
       return;
@@ -63,17 +79,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
   } catch (error) {
-  console.error('Error:', error);
-  res.status(500).json({ success: false, message: 'Server error', error: String(error) });
-}
+    console.error('Error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: String(error) });
+  }
 };
 
 export const getMe = async (req: Request, res: Response): Promise<void> => {
@@ -81,7 +92,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     const user = await User.findById((req as AuthRequest).user?.id).select('-password');
     res.status(200).json({ success: true, user });
   } catch (error) {
-  console.error('Error:', error);
-  res.status(500).json({ success: false, message: 'Server error', error: String(error) });
-}
+    console.error('Error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: String(error) });
+  }
 };
